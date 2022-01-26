@@ -1,0 +1,12 @@
+net:
+  n1: 16
+  n2: 32
+  n3: 64
+  img: [64,64]
+  dir:  "D:\\ai intro\\AI intro\\5. Retele Neurale\\covid_dataset"
+  dir2: "D:\\ai intro\\Munca_v2\\Experimente Confusion Matrix\\big dataset\\primul test\\damn1633_12132021.h5"
+train:
+  bs: 32
+  lr: 0.001
+  opt: SGD
+  n_epochs: 10
