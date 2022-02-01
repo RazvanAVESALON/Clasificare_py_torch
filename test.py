@@ -37,6 +37,7 @@ network = torch.load(r"D:\\ai intro\\Pytorch\\Clasificare_py_torch\\my_model.pth
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Device ", device)
 
+print(type(test_ds.targets), type(test_ds.targets[0]))
 test_labels = test_ds.targets
 predictions = []
 
@@ -54,6 +55,6 @@ for data in test_loader:
     else:
         current_predict = current_predict.numpy()
     predictions = np.concatenate((predictions, current_predict))
-
+print(type(predictions))
 acc = np.sum(predictions == test_labels)/len(predictions)
 print(f'Test accuracy is {acc*100}')
