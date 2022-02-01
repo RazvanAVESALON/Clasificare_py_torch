@@ -27,9 +27,9 @@ n3 = config['net']['n3']
 class CustomNet(torch.nn.Module):
     def __init__(self, input_nc, n1, n2, n3, n_classes):
         super(CustomNet, self).__init__()
-        self.conv1 = nn.Conv2d(input_nc, n1, (5, 5), padding='valid')
-        self.conv2 = nn.Conv2d(n1, n2, (5, 5), padding='valid')
-        self.linear1 = nn.Linear(5408, config["train"]["bs"]) # 4*4 image dimension after 2 max_pooling
+        self.conv1 = nn.Conv2d(input_nc, n1, (5, 5), padding='same')
+        self.conv2 = nn.Conv2d(n1, n2, (5, 5), padding='same')
+        self.linear1 = nn.Linear(n2*16*16, config["train"]["bs"]) # 4*4 image dimension after 2 max_pooling
         self.linear2 = nn.Linear(config["train"]["bs"], n_classes)
         self.max_pool = nn.MaxPool2d((2, 2))
         self.relu = nn.ReLU()
