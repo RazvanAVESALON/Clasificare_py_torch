@@ -8,5 +8,5 @@ net:
 train:
   bs: 32
   lr: 0.001
-  opt: SGD
+  opt: Adam
   n_epochs: 10
