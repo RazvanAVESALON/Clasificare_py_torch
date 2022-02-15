@@ -1,4 +1,6 @@
 
+from pathlib import Path
+from winreg import ExpandEnvironmentStrings
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -9,6 +11,24 @@ import torchvision.transforms as T
 import torchvision.datasets as dset
 import yaml
 from custom_net import CustomNet
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import os
+from datetime import datetime 
+
+directory =f"Experiment{datetime.now().strftime('%H%M_%m%d%Y')}.h5"
+
+parent_dir = os.getcwd()
+path = os.path.join(parent_dir, directory)
+os.mkdir(path)
+dir="Weights"
+path=os.path.join(path, dir)
+os=os.mkdir(path)
+
+
+
+
 print(f"pyTorch version {torch.__version__}")
 print(f"torchvision version {torchvision.__version__}")
 print(f"CUDA available {torch.cuda.is_available()}")
@@ -42,7 +62,6 @@ train_ds = dset.ImageFolder(config['net']['dir']+'/train',transform=transforms)
 train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=train_bs)
 
 print("Nr de imagini in setul de antrenare", len(train_ds))
-print("Nr de imagini in setul de test", len(test_ds))
 
 print("Dim primei imagini din Dataset", train_ds[0][0])
 print("Etichete pt prima imagine", train_ds[0][1])
@@ -77,6 +96,7 @@ criterion.to(device)
 for ep in range(n_epochs):
     predictions = []
     targets = []
+  
     
     loss_epoch = 0
     for data in train_loader:
@@ -134,3 +154,12 @@ for ep in range(n_epochs):
 
     # salvam ponderile modelului dupa fiecare epoca
     torch.save(network, 'my_model.pt')
+    
+    PATH = f"{path}\\model_epoch{ep}.pth"
+    torch.save({
+            'epoch': ep,
+            'model_state_dict': network.state_dict(),
+            'optimizer_state_dict': opt.state_dict(),
+            'loss': loss_epoch,
+            }, PATH)
+    
