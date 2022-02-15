@@ -1,4 +1,6 @@
 
+from pathlib import Path
+from tkinter.filedialog import SaveFileDialog
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -10,6 +12,7 @@ import torchvision.datasets as dset
 import yaml
 from custom_net import CustomNet
 from datetime import datetime
+from sklearn.metrics import roc_curve,roc_auc_score,confusion_matrix, accuracy_score,recall_score,f1_score,precision_score,plot_confusion_matrix,ConfusionMatrixDisplay,precision_recall_curve
 print(f"pyTorch version {torch.__version__}")
 print(f"torchvision version {torchvision.__version__}")
 print(f"CUDA available {torch.cuda.is_available()}")
@@ -18,20 +21,22 @@ config = None
 with open('config.yml') as f:
     config = yaml.safe_load(f)
 
+
 yml_data=yaml.dump(config)
 
 
 
-directory =f"Test{datetime.now().strftime('%H%M_%m%d%Y')}.h5"
-parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1501_02112022.h5'
+directory =f"Test{datetime.now().strftime('%m%d%Y_%H%M')}"
+parent_dir =r"D:\\ai intro\\Pytorch\\Clasificare_py_torch\\Experiment1803_02152022.h5"
 path = os.path.join(parent_dir, directory)
 os.mkdir(path)
 
 f= open(f"{path}\\yaml_config.txt","w+")
 f.write(yml_data)
-f.close()
 
 
+# with open('config.yml','w') as f: 
+#     yaml.dump(config,path)
 
 
 test_bs = config["train"]["bs"]
@@ -48,7 +53,15 @@ test_ds = dset.ImageFolder(config['net']['dir']+'/test',transform=transforms)
 test_loader = torch.utils.data.DataLoader(test_ds, shuffle=False, batch_size=test_bs)
 
 
-network = torch.load(r"D:\\ai intro\\Pytorch\\Clasificare_py_torch\\my_model.pth")
+network = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1803_02152022.h5\my_model.pt")
+
+
+
+checkpoint = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1803_02152022.h5\Weights\model_epoch94.pth")
+
+epoch = checkpoint['epoch']
+loss = checkpoint['loss']
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("Device ", device)
@@ -57,7 +70,8 @@ print(type(test_ds.targets), type(test_ds.targets[0]))
 test_labels = test_ds.targets
 predictions = []
 
-network.eval()
+#network.eval()
+
 for data in test_loader:
     ins, tgs = data
     ins = ins.to(device)
@@ -74,3 +88,52 @@ for data in test_loader:
 print(type(predictions))
 acc = np.sum(predictions == test_labels)/len(predictions)
 print(f'Test accuracy is {acc*100}')
+fig=plt.figure()
+
+cm=confusion_matrix(predictions,test_labels)
+ConfusionMatrixDisplay.from_predictions(test_labels, predictions)
+plt.savefig(F"{path}\\Confusion_matrix")
+plt.figure()
+
+
+acc=accuracy_score(predictions,test_labels)
+preci=precision_score(predictions,test_labels)
+reca=recall_score(predictions,test_labels)
+F1=f1_score(predictions,test_labels)
+f.write("\n")
+f.write("acc:")
+f.write(acc.astype('str'))
+f.write("\n")
+f.write("PPV:")
+f.write(preci.astype('str'))
+f.write("\n")
+f.write("FPR:")
+f.write(reca.astype('str'))
+f.write("\n")
+f.write("F1:")
+f.write(F1.astype('str'))
+
+fpr1, tpr1, thresholds = roc_curve(test_labels, predictions, pos_label=1)
+plt.plot(fpr1,tpr1, marker='.', label='19',color='C4')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.legend()
+plt.savefig(f"{path}\\ROC_Curve")
+plt.figure()
+          
+auc=roc_auc_score(test_labels,predictions)
+f.write("\n")
+f.write("Auc:")
+f.write(auc.astype('str'))
+
+precision1, recall1, thresholds = precision_recall_curve(test_labels, predictions)
+plt.plot(precision1,recall1, marker='.', label='15',color='C0')
+plt.xlabel('Precision')
+plt.ylabel('Recall')
+plt.legend()
+plt.savefig(f"{path}\\Precision_Recall_Curve")
+
+
+
+
+
