@@ -17,6 +17,8 @@ import torch.optim as optim
 import os
 from datetime import datetime 
 
+
+
 directory =f"Experiment{datetime.now().strftime('%H%M_%m%d%Y')}.h5"
 
 parent_dir = os.getcwd()
@@ -26,9 +28,6 @@ dir="Weights"
 path=os.path.join(path, dir)
 os=os.mkdir(path)
 
-
-
-
 print(f"pyTorch version {torch.__version__}")
 print(f"torchvision version {torchvision.__version__}")
 print(f"CUDA available {torch.cuda.is_available()}")
@@ -37,12 +36,9 @@ config = None
 with open('config.yml') as f:
     config = yaml.safe_load(f)
 
-
-
 n_epochs = config["train"]["n_epochs"]
 train_bs = config["train"]["bs"]
 test_bs = config["train"]["bs"]
-
 
 random_seed = 1
 torch.backends.cudnn.enabled = False
@@ -155,11 +151,11 @@ for ep in range(n_epochs):
     # salvam ponderile modelului dupa fiecare epoca
     torch.save(network, 'my_model.pt')
     
-    PATH = f"{path}\\model_epoch{ep}.pth"
+    modelpath = f"{path}\\model_epoch{ep}.pth"
     torch.save({
             'epoch': ep,
             'model_state_dict': network.state_dict(),
             'optimizer_state_dict': opt.state_dict(),
             'loss': loss_epoch,
-            }, PATH)
+            }, modelpath)
     
