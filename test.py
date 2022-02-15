@@ -9,13 +9,29 @@ import torchvision.transforms as T
 import torchvision.datasets as dset
 import yaml
 from custom_net import CustomNet
+from datetime import datetime
 print(f"pyTorch version {torch.__version__}")
 print(f"torchvision version {torchvision.__version__}")
 print(f"CUDA available {torch.cuda.is_available()}")
-
+import os 
 config = None
 with open('config.yml') as f:
     config = yaml.safe_load(f)
+
+yml_data=yaml.dump(config)
+
+
+
+directory =f"Test{datetime.now().strftime('%H%M_%m%d%Y')}.h5"
+parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1501_02112022.h5'
+path = os.path.join(parent_dir, directory)
+os.mkdir(path)
+
+f= open(f"{path}\\yaml_config.txt","w+")
+f.write(yml_data)
+f.close()
+
+
 
 
 test_bs = config["train"]["bs"]
