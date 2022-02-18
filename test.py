@@ -27,7 +27,7 @@ yml_data=yaml.dump(config)
 
 
 directory =f"Test{datetime.now().strftime('%m%d%Y_%H%M')}"
-parent_dir =r"D:\\ai intro\\Pytorch\\Clasificare_py_torch\\Experiment1803_02152022.h5"
+parent_dir =r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1442_02162022"
 path = os.path.join(parent_dir, directory)
 os.mkdir(path)
 
@@ -53,14 +53,14 @@ test_ds = dset.ImageFolder(config['net']['dir']+'/test',transform=transforms)
 test_loader = torch.utils.data.DataLoader(test_ds, shuffle=False, batch_size=test_bs)
 
 
-network = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1803_02152022.h5\my_model.pt")
+network = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1442_02162022\Weights\my_model02162022_1448.pt")
 
 
 
-checkpoint = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1803_02152022.h5\Weights\model_epoch94.pth")
+# checkpoint = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1335_02162022\Weights\model_epoch99.pth")
 
-epoch = checkpoint['epoch']
-loss = checkpoint['loss']
+# epoch = checkpoint['epoch']
+# loss = checkpoint['loss']
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -70,7 +70,7 @@ print(type(test_ds.targets), type(test_ds.targets[0]))
 test_labels = test_ds.targets
 predictions = []
 
-#network.eval()
+network.eval()
 
 for data in test_loader:
     ins, tgs = data
@@ -126,8 +126,8 @@ f.write("\n")
 f.write("Auc:")
 f.write(auc.astype('str'))
 
-precision1, recall1, thresholds = precision_recall_curve(test_labels, predictions)
-plt.plot(precision1,recall1, marker='.', label='15',color='C0')
+precision, recall, thresholds = precision_recall_curve(test_labels, predictions)
+plt.plot(precision,recall, marker='.', label='15',color='C0')
 plt.xlabel('Precision')
 plt.ylabel('Recall')
 plt.legend()
