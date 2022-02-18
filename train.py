@@ -19,7 +19,7 @@ from datetime import datetime
 
 
 
-directory =f"Experiment{datetime.now().strftime('%H%M_%m%d%Y')}.h5"
+directory =f"Experiment{datetime.now().strftime('%H%M_%m%d%Y')}"
 
 parent_dir = os.getcwd()
 path = os.path.join(parent_dir, directory)
@@ -75,7 +75,10 @@ print(network)
 criterion = nn.CrossEntropyLoss()
 
 # definirea optimizatorului
-opt = torch.optim.Adam(network.parameters(), lr=config["train"]["lr"])
+if config['train']['opt'] == 'Adam':
+    opt = torch.optim.Adam(network.parameters(), lr=config['train']['lr'])
+elif config['train']['opt'] == 'SGD':
+    opt = torch.optim.SGD(network.parameters(), lr=config['train']['lr'])
 
 n_epochs = config["train"]["n_epochs"]
 
@@ -149,7 +152,7 @@ for ep in range(n_epochs):
     print(f'Epoch {ep}: error {loss_epoch/train_bs} accuracy {acc*100}')
 
     # salvam ponderile modelului dupa fiecare epoca
-    torch.save(network, 'my_model.pt')
+    torch.save(network, f"{path}\\my_model{datetime.now().strftime('%m%d%Y_%H%M')}.pt")
     
     modelpath = f"{path}\\model_epoch{ep}.pth"
     torch.save({
