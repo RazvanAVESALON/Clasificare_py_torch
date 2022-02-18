@@ -1,9 +1,7 @@
 net:
   dir: D:\ai intro\AI intro\5. Retele Neurale\covid_dataset
   dir2: D:\ai intro\Munca_v2\Experimente Confusion Matrix\big dataset\primul test\damn1633_12132021.h5
-  img:
-  - 64
-  - 64
+  img: [64,64]
   n1: 16
   n2: 32
   n3: 64
@@ -11,4 +9,4 @@ train:
   bs: 32
   lr: 0.001
   n_epochs: 100
-  opt: Adam
+  opt: SGD
