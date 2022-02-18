@@ -6,3 +6,4 @@ my_model.pth
 *.png
 *.txt
 *.pyc
+__pycache__/custom_net.cpython-39.pyc
