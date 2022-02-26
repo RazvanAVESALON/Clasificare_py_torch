@@ -17,22 +17,21 @@ print(f"pyTorch version {torch.__version__}")
 print(f"torchvision version {torchvision.__version__}")
 print(f"CUDA available {torch.cuda.is_available()}")
 import os 
+
 config = None
 with open('config.yml') as f:
     config = yaml.safe_load(f)
 
-
-yml_data=yaml.dump(config)
-
-
-
 directory =f"Test{datetime.now().strftime('%m%d%Y_%H%M')}"
-parent_dir =r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1442_02162022"
+parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment_dataset_mare02242022_1249'
 path = os.path.join(parent_dir, directory)
 os.mkdir(path)
 
-f= open(f"{path}\\yaml_config.txt","w+")
-f.write(yml_data)
+save_config = f"{path}\\config.yaml"
+with open(save_config, 'w') as fp:
+    yaml.dump(config, fp)
+
+
 
 
 # with open('config.yml','w') as f: 
@@ -49,11 +48,11 @@ transforms = T.Compose([
         # T.Normalize((0.1307,), (0.3081,)), # Normalize the dataset with mean and std specified
                ])
 
-test_ds = dset.ImageFolder(config['net']['dir']+'/test',transform=transforms) 
+test_ds = dset.ImageFolder(config['dataset']['ds_path']+'/test',transform=transforms) 
 test_loader = torch.utils.data.DataLoader(test_ds, shuffle=False, batch_size=test_bs)
 
 
-network = torch.load(r"D:\ai intro\Pytorch\Clasificare_py_torch\Experiment1442_02162022\Weights\my_model02162022_1448.pt")
+network = torch.load(config['test']['exp_path'])
 
 
 
@@ -96,23 +95,14 @@ plt.savefig(F"{path}\\Confusion_matrix")
 plt.figure()
 
 
+f = open(f"{path}\\metrics.txt","w+")
+
 acc=accuracy_score(predictions,test_labels)
 preci=precision_score(predictions,test_labels)
 reca=recall_score(predictions,test_labels)
 F1=f1_score(predictions,test_labels)
-f.write("\n")
-f.write("acc:")
-f.write(acc.astype('str'))
-f.write("\n")
-f.write("PPV:")
-f.write(preci.astype('str'))
-f.write("\n")
-f.write("FPR:")
-f.write(reca.astype('str'))
-f.write("\n")
-f.write("F1:")
-f.write(F1.astype('str'))
 
+    
 fpr1, tpr1, thresholds = roc_curve(test_labels, predictions, pos_label=1)
 plt.plot(fpr1,tpr1, marker='.', label='19',color='C4')
 plt.xlabel('False Positive Rate')
@@ -133,7 +123,22 @@ plt.ylabel('Recall')
 plt.legend()
 plt.savefig(f"{path}\\Precision_Recall_Curve")
 
+with open(f"{path}\\metrics.txt","w+") as fp:
+    fp.write("\n")
+    f.write("acc:")
+    f.write(acc.astype('str'))
+    f.write("\n")
+    f.write("PPV:")
+    f.write(preci.astype('str'))
+    f.write("\n")
+    f.write("FPR:")
+    f.write(reca.astype('str'))
+    f.write("\n")
+    f.write("F1:")
+    f.write(F1.astype('str'))
+    
 
+f.close()
 
 
 
