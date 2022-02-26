@@ -1,6 +1,6 @@
+dataset:
+  ds_path: "D:\\ai intro\\dataset"
 net:
-  dir: D:\ai intro\AI intro\5. Retele Neurale\covid_dataset
-  dir2: D:\ai intro\Munca_v2\Experimente Confusion Matrix\big dataset\primul test\damn1633_12132021.h5
   img: [64,64]
   n1: 16
   n2: 32
@@ -9,4 +9,6 @@ train:
   bs: 32
   lr: 0.001
   n_epochs: 100
-  opt: SGD
+  opt: Adam
+test:
+  exp_path: "D:\\ai intro\\Pytorch\\Clasificare_py_torch\\Experiment_dataset_mare02242022_1249\\Weights\\my_model02242022_1346_epoch95.pt"
