@@ -1,4 +1,5 @@
 
+from json.tool import main
 from pathlib import Path
 from winreg import ExpandEnvironmentStrings
 import matplotlib.pyplot as plt
@@ -14,151 +15,152 @@ from custom_net import CustomNet
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import os
-from datetime import datetime 
+
+from datetime import datetime
+import os 
+def train(network, train_loader, criterion, opt, n_epochs=10, weights="weights", save_every_epochs=5,train_bs=8):
+    total_acc = []
+    total_loss = []
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Device ", device)
+    
+    network.train()
+    network.to(device)
+    criterion.to(device)
+
+    for ep in range(n_epochs):
+        predictions = []
+        targets = []
+
+        loss_epoch = 0
+        for data in train_loader:
+            ins, tgs = data
+            ins = ins.to(device)
+            tgs = tgs.to(device)
+            # redimensionam tensor-ul input
+            # print(ins.shape)
+            # print(tgs.shape)
+
+            # seteaza toti gradientii la zero, deoarece PyTorch acumuleaza valorile lor dupa mai multe backward passes
+            opt.zero_grad()
+
+            # se face forward propagation -> se calculeaza predictia
+            output = network(ins)
+
+            # se calculeaza eroarea/loss-ul
+            loss = criterion(output, tgs)
+
+            # se face backpropagation -> se calculeaza gradientii
+            loss.backward()
+
+                # se actualizează weights-urile
+            opt.step()
+
+            loss_epoch = loss_epoch + loss.item()
+
+            with torch.no_grad():
+                network.eval()
+                current_predict = network(ins)
+
+                # deoarece reteaua nu include un strat de softmax, predictia finala (cifra) trebuie calculata manual
+                current_predict = nn.Softmax(dim=1)(current_predict)
+                current_predict = current_predict.argmax(dim=1)
+
+                if 'cuda' in device.type:
+                    current_predict = current_predict.cpu().numpy()
+                    current_target = tgs.cpu().numpy()
+                else:
+                    current_predict = current_predict.numpy()
+                    current_target = tgs.numpy()
+
+                # print(current_predict.shape)
+                predictions = np.concatenate(
+                    (predictions, current_predict), axis=0)
+                targets = np.concatenate((targets, current_target))
+
+        total_loss.append(loss_epoch/train_bs)
+        # print(predictions.shape)
+        # print(len(targets))
+        # Calculam acuratetea
+        acc = np.sum(predictions == targets)/len(predictions)
+        total_acc.append(acc)
+        print(f'Epoch {ep}: error {loss_epoch/train_bs} accuracy {acc*100}')
+
+        # salvam ponderile modelului dupa fiecare epoca
+        if ep % save_every_epochs == 0:
+           torch.save(network, f"{weights}\\my_model{datetime.now().strftime('%m%d%Y_%H%M')}_epoch{ep}.pt")
+    
+    return {'loss': total_loss, 'acc': total_acc}
+            
+def main():
+    
+
+  directory =f"Experiment_dataset_mare{datetime.now().strftime('%m%d%Y_%H%M')}"
+  parent_dir = os.getcwd()
+  path = os.path.join(parent_dir, directory)
+  os.mkdir(path)
+  dir="Weights"
+  path=os.path.join(path, dir)
+  os.mkdir(path)
 
 
+  print(f"pyTorch version {torch.__version__}")
+  print(f"torchvision version {torchvision.__version__}")
+  print(f"CUDA available {torch.cuda.is_available()}")
 
-directory =f"Experiment{datetime.now().strftime('%H%M_%m%d%Y')}"
+  config = None
+  with open('config.yml') as f:
+     config = yaml.safe_load(f)
 
-parent_dir = os.getcwd()
-path = os.path.join(parent_dir, directory)
-os.mkdir(path)
-dir="Weights"
-path=os.path.join(path, dir)
-os=os.mkdir(path)
+ 
+  
+  
 
-print(f"pyTorch version {torch.__version__}")
-print(f"torchvision version {torchvision.__version__}")
-print(f"CUDA available {torch.cuda.is_available()}")
+  random_seed = 1
+  torch.backends.cudnn.enabled = False
+  torch.manual_seed(random_seed)
 
-config = None
-with open('config.yml') as f:
-    config = yaml.safe_load(f)
-
-n_epochs = config["train"]["n_epochs"]
-train_bs = config["train"]["bs"]
-test_bs = config["train"]["bs"]
-
-random_seed = 1
-torch.backends.cudnn.enabled = False
-torch.manual_seed(random_seed)
-
-transforms = T.Compose([ 
-        T.Resize((64,64)),
-        T.ToTensor(), # converts a PIL.Image or numpy array into torch.Tensor
+  transforms = T.Compose([ 
+          T.Resize((64,64)),
+          T.ToTensor(), # converts a PIL.Image or numpy array into torch.Tensor
        
-        # T.Normalize((0.1307,), (0.3081,)), # Normalize the dataset with mean and std specified
+          # T.Normalize((0.1307,), (0.3081,)), # Normalize the dataset with mean and std specified
                ])
 
-train_ds = dset.ImageFolder(config['net']['dir']+'/train',transform=transforms)
+  train_ds = dset.ImageFolder(config['dataset']['ds_path']+'/train',transform=transforms)
 
 
 
-train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=train_bs)
+  train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=config["train"]["bs"])
 
-print("Nr de imagini in setul de antrenare", len(train_ds))
+  print("Nr de imagini in setul de antrenare", len(train_ds))
 
-print("Dim primei imagini din Dataset", train_ds[0][0])
-print("Etichete pt prima imagine", train_ds[0][1])
+  print("Dim primei imagini din Dataset", train_ds[0][0])
+  print("Etichete pt prima imagine", train_ds[0][1])
 
-n_classes = len(np.unique(train_ds.targets))
-print(np.unique(train_ds.targets))
+  n_classes = len(np.unique(train_ds.targets))
+  print(np.unique(train_ds.targets))
 
 
-print (n_classes)
+  print (n_classes)
 
-network = CustomNet(3, config['net']['n1'], config['net']['n2'], config['net']['n3'], n_classes)
-print(network)
+  network = CustomNet(3, config['net']['n1'], config['net']['n2'], config['net']['n3'], n_classes)
+  print(network)
 
-# Specificarea functiei loss
-criterion = nn.CrossEntropyLoss()
+  # Specificarea functiei loss
+  criterion = nn.CrossEntropyLoss()
 
-# definirea optimizatorului
-if config['train']['opt'] == 'Adam':
+  # definirea optimizatorului
+  if config['train']['opt'] == 'Adam':
     opt = torch.optim.Adam(network.parameters(), lr=config['train']['lr'])
-elif config['train']['opt'] == 'SGD':
+  elif config['train']['opt'] == 'SGD':
     opt = torch.optim.SGD(network.parameters(), lr=config['train']['lr'])
-
-n_epochs = config["train"]["n_epochs"]
-
-total_acc = []
-total_loss = []
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print("Device ", device)
-
-network.train()
-network.to(device)
-criterion.to(device)
-
-for ep in range(n_epochs):
-    predictions = []
-    targets = []
+    
   
-    
-    loss_epoch = 0
-    for data in train_loader:
-        ins, tgs = data
-        ins = ins.to(device)
-        tgs = tgs.to(device)
-        # redimensionam tensor-ul input
-        #print(ins.shape)
-        #print(tgs.shape)
-        
-        # seteaza toti gradientii la zero, deoarece PyTorch acumuleaza valorile lor dupa mai multe backward passes
-        opt.zero_grad()
+  print(train(network,train_loader,criterion,opt,n_epochs=config['train']['n_epochs'],weights=path,train_bs=config["train"]["bs"])  )
+  
+ 
 
-        # se face forward propagation -> se calculeaza predictia
-        output = network(ins)
-
-        # se calculeaza eroarea/loss-ul
-        loss = criterion(output, tgs)
-
-        # se face backpropagation -> se calculeaza gradientii
-        loss.backward()
-
-        # se actualizează weights-urile
-        opt.step()
-
-        loss_epoch = loss_epoch + loss.item()
-
-        with torch.no_grad():
-            network.eval()
-            current_predict = network(ins)
-
-            # deoarece reteaua nu include un strat de softmax, predictia finala (cifra) trebuie calculata manual
-            current_predict = nn.Softmax(dim=1)(current_predict)
-            current_predict = current_predict.argmax(dim=1)
-
-            if 'cuda' in device.type:
-                current_predict = current_predict.cpu().numpy()
-                current_target = tgs.cpu().numpy()
-            else:
-                current_predict = current_predict.numpy()
-                current_target = tgs.numpy()
-
-            # print(current_predict.shape)
-            predictions = np.concatenate((predictions, current_predict), axis=0)
-            targets = np.concatenate((targets, current_target))
-    
-    total_loss.append(loss_epoch/train_bs)
-    
-    # print(predictions.shape)
-    # print(len(targets))
-    # Calculam acuratetea
-    acc = np.sum(predictions==targets)/len(predictions)
-    total_acc.append(acc)
-    print(f'Epoch {ep}: error {loss_epoch/train_bs} accuracy {acc*100}')
-
-    # salvam ponderile modelului dupa fiecare epoca
-    torch.save(network, f"{path}\\my_model{datetime.now().strftime('%m%d%Y_%H%M')}.pt")
-    
-    modelpath = f"{path}\\model_epoch{ep}.pth"
-    torch.save({
-            'epoch': ep,
-            'model_state_dict': network.state_dict(),
-            'optimizer_state_dict': opt.state_dict(),
-            'loss': loss_epoch,
-            }, modelpath)
-    
+if __name__ == "__main__":
+    main()
