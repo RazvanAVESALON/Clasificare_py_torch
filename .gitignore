@@ -7,3 +7,5 @@ my_model.pth
 *.txt
 *.pyc
 __pycache__/custom_net.cpython-39.pyc
+Experiment_dataset_mare02222022_1701/Test02252022_1233/config.yaml
+*.yaml
