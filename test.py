@@ -15,15 +15,24 @@ from datetime import datetime
 from sklearn.metrics import roc_curve,roc_auc_score,confusion_matrix, accuracy_score,recall_score,f1_score,precision_score,plot_confusion_matrix,ConfusionMatrixDisplay,precision_recall_curve
 print(f"pyTorch version {torch.__version__}")
 print(f"torchvision version {torchvision.__version__}")
-print(f"CUDA available {torch.cuda.is_available()}")
+print(f"CUDA available {torch.cuda.is_available()}\n")
 import os 
+
+def convert_prob(probs):
+    converted_probs = []
+    for i in range(len(probs)):
+        if(probs[i] > 0.5):
+            converted_probs.append(1)
+        else:
+            converted_probs.append(0)   
+    return converted_probs    
 
 config = None
 with open('config.yml') as f:
     config = yaml.safe_load(f)
 
 directory =f"Test{datetime.now().strftime('%m%d%Y_%H%M')}"
-parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment_dataset_mare02242022_1249'
+parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment_dataset_mare03022022_1355'
 path = os.path.join(parent_dir, directory)
 os.mkdir(path)
 
@@ -67,7 +76,7 @@ print("Device ", device)
 
 print(type(test_ds.targets), type(test_ds.targets[0]))
 test_labels = test_ds.targets
-predictions = []
+predictions = None
 
 network.eval()
 
@@ -77,68 +86,73 @@ for data in test_loader:
 
     current_predict = network(ins)
     current_predict = nn.Softmax(dim=1)(current_predict)
-    current_predict = current_predict.argmax(dim=1)
+    # current_predict = current_predict.argmax(dim=1)
 
     if 'cuda' in device.type:
-        current_predict = current_predict.cpu().numpy()
+        current_predict = current_predict.detach().cpu().numpy()
     else:
         current_predict = current_predict.numpy()
-    predictions = np.concatenate((predictions, current_predict))
-print(type(predictions))
-acc = np.sum(predictions == test_labels)/len(predictions)
+    
+    if predictions is None:
+        predictions = current_predict # TEST BS x 2
+    else:
+        predictions = np.concatenate((predictions, current_predict), axis=0)
+    
+converted_preds=convert_prob(predictions[:,1])
+acc = np.sum(np.array(converted_preds) == np.array(test_labels))/len(converted_preds)
 print(f'Test accuracy is {acc*100}')
-fig=plt.figure()
 
-cm=confusion_matrix(predictions,test_labels)
-ConfusionMatrixDisplay.from_predictions(test_labels, predictions)
+fig=plt.figure()
+cm=confusion_matrix(test_labels, converted_preds)
+ConfusionMatrixDisplay.from_predictions(test_labels, converted_preds)
 plt.savefig(F"{path}\\Confusion_matrix")
 plt.figure()
 
 
-f = open(f"{path}\\metrics.txt","w+")
 
-acc=accuracy_score(predictions,test_labels)
-preci=precision_score(predictions,test_labels)
-reca=recall_score(predictions,test_labels)
-F1=f1_score(predictions,test_labels)
+
+acc=accuracy_score(test_labels, converted_preds)
+preci=precision_score(test_labels, converted_preds)
+reca=recall_score(test_labels, converted_preds)
+F1=f1_score(test_labels, converted_preds)
 
     
-fpr1, tpr1, thresholds = roc_curve(test_labels, predictions, pos_label=1)
-plt.plot(fpr1,tpr1, marker='.', label='19',color='C4')
+fpr1, tpr1, thresholds = roc_curve(test_labels, predictions[:, 1], pos_label=1)
+plt.plot(fpr1,tpr1, marker='.',color='C4')
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-plt.legend()
+# plt.legend()
 plt.savefig(f"{path}\\ROC_Curve")
 plt.figure()
           
-auc=roc_auc_score(test_labels,predictions)
-f.write("\n")
-f.write("Auc:")
-f.write(auc.astype('str'))
+auc=roc_auc_score(test_labels,predictions[:,1])
 
-precision, recall, thresholds = precision_recall_curve(test_labels, predictions)
-plt.plot(precision,recall, marker='.', label='15',color='C0')
+
+precision, recall, thresholds = precision_recall_curve(test_labels, predictions[:,1])
+plt.plot(precision,recall, marker='.',color='C0')
 plt.xlabel('Precision')
 plt.ylabel('Recall')
-plt.legend()
+# plt.legend()
 plt.savefig(f"{path}\\Precision_Recall_Curve")
 
 with open(f"{path}\\metrics.txt","w+") as fp:
     fp.write("\n")
-    f.write("acc:")
-    f.write(acc.astype('str'))
-    f.write("\n")
-    f.write("PPV:")
-    f.write(preci.astype('str'))
-    f.write("\n")
-    f.write("FPR:")
-    f.write(reca.astype('str'))
-    f.write("\n")
-    f.write("F1:")
-    f.write(F1.astype('str'))
+    fp.write("acc:")
+    fp.write(acc.astype('str'))
+    fp.write("\n")
+    fp.write("PPV:")
+    fp.write(preci.astype('str'))
+    fp.write("\n")
+    fp.write("FPR:")
+    fp.write(reca.astype('str'))
+    fp.write("\n")
+    fp.write("F1:")
+    fp.write(F1.astype('str'))
+    fp.write("\n")
+    fp.write("Auc:")
+    fp.write(auc.astype('str'))
     
 
-f.close()
 
 
 
