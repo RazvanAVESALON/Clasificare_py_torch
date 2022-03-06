@@ -1,5 +1,6 @@
 
 from json.tool import main
+from msilib.schema import _Validation_records
 from pathlib import Path
 from winreg import ExpandEnvironmentStrings
 import matplotlib.pyplot as plt
@@ -10,89 +11,164 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as T
 import torchvision.datasets as dset
+import torchmetrics
 import yaml
 from custom_net import CustomNet
 import torch
 import torch.nn as nn
-import torch.optim as optim
-
+import torch.optim as optim       
 from datetime import datetime
 import os 
-def train(network, train_loader, criterion, opt, n_epochs=10, weights="weights", save_every_epochs=5,train_bs=8):
-    total_acc = []
-    total_loss = []
+
+
+from torchvision.datasets import ImageFolder
+from tqdm import tqdm
+
+
+def plot_acc_loss(result,path):
+    acc = result['acc']['train']
+    loss = result['loss']['train']
+    val_acc = result['acc']['valid']
+    val_loss = result['loss']['valid']
+    
+    plt.figure(figsize=(15, 5))
+    plt.subplot(121)
+    plt.plot(acc, label='Train')
+    plt.plot(val_acc, label='Validation')
+    plt.title('Accuracy', size=15)
+    plt.legend()
+    plt.grid(True)
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    
+    plt.subplot(122)
+    plt.plot(loss, label='Train')
+    plt.plot(val_loss, label='Validation')
+    plt.title('Loss', size=15)
+    plt.legend()
+    plt.grid(True)
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    
+    plt.savefig(f"{path}\\Curbe de învățare")
+
+def set_parameter_requires_grad(model, freeze):
+    if freeze:
+        for param in model.parameters():
+            param.requires_grad = False
+
+
+def train(network, train_loader, valid_loader, criterion, opt, epochs, thresh=0.5, weights_dir='weights', save_every_ep=10):
+   
+    total_loss = {'train': [], 'valid': []}
+    total_acc = {'train': [], 'valid': []}
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print("Device ", device)
-    
-    network.train()
+    print(f"[INFO] Starting training on device {device} ...")
+
+    loaders = {
+        'train': train_loader,
+        'valid': valid_loader
+    }
+    metric = torchmetrics.Accuracy()
+
     network.to(device)
     criterion.to(device)
 
-    for ep in range(n_epochs):
-        predictions = []
-        targets = []
+    for ep in range(epochs):
+        
 
-        loss_epoch = 0
-        for data in train_loader:
-            ins, tgs = data
-            ins = ins.to(device)
-            tgs = tgs.to(device)
-            # redimensionam tensor-ul input
-            # print(ins.shape)
-            # print(tgs.shape)
+        print(f"[INFO] Epoch {ep}/{epochs - 1}")
+        
+        print("-" * 20)        
+        for phase in ['train', 'valid']:
+            running_loss = 0.0
 
-            # seteaza toti gradientii la zero, deoarece PyTorch acumuleaza valorile lor dupa mai multe backward passes
-            opt.zero_grad()
+            if phase == 'train':
+                network.train()  # Set model to training mode
+            else:
+                network.eval()   # Set model to evaluate mode
 
-            # se face forward propagation -> se calculeaza predictia
-            output = network(ins)
+            with tqdm(desc=phase, unit=' batch', total=len(loaders[phase].dataset)) as pbar:
+                for data in loaders[phase]:
+                    ins, tgs = data
+                    ins = ins.to(device)
+                    tgs = tgs.to(device)
+                    #print (ins.size(),tgs.size())
+                    # seteaza toti gradientii la zero, deoarece PyTorch acumuleaza valorile lor dupa mai multe backward passes
+                    opt.zero_grad() 
 
-            # se calculeaza eroarea/loss-ul
-            loss = criterion(output, tgs)
+                    with torch.set_grad_enabled(phase == 'train'):
+                        # se face forward propagation -> se calculeaza predictia
+                        output = network(ins)
+                        #print(tgs.size())
+                        #print(output.size())
+                     
+                        # second_output = Variable(torch.argmax(output,1).float(),requires_grad=True).cuda()
+                        # output[:, 1, :, :] => 8 x 1 x 128 x 1288
+                        # tgs => 8 x 1 x 128 x 128
+                        # tgs.squeeze() => 8 x 128 x 128
+                        
+                        # se calculeaza eroarea/loss-ul
+                        loss = criterion(output, tgs.squeeze())
+                        
+                        # deoarece reteaua nu include un strat de softmax, predictia finala trebuie calculata manual
+                        current_predict = F.softmax(output, dim=1)[:, 1].float()
+                        current_predict[current_predict >= thresh] = 1.0
+                        current_predict[current_predict < thresh] = 0.0
 
-            # se face backpropagation -> se calculeaza gradientii
-            loss.backward()
+                        if 'cuda' in device.type:
+                            current_predict = current_predict.cpu()
+                            current_target = tgs.cpu().type(torch.int).squeeze()
+                        else:
+                            current_predict = current_predict
+                            current_target = tgs.type(torch.int).squeeze()
 
-                # se actualizează weights-urile
-            opt.step()
+                        # print(current_predict.shape, current_target.shape)
+                        # print(current_predict.dtype, current_target.dtype)
+                        acc = metric(current_predict, current_target)
+                        # print(f"\tAcc on batch {i}: {acc}")
 
-            loss_epoch = loss_epoch + loss.item()
+                        if phase == 'train':
+                            # se face backpropagation -> se calculeaza gradientii
+                            loss.backward()
+                            # se actualizează weights-urile
+                            opt.step()
+                    
+                    running_loss += loss.item() * ins.size(0)
+                    # print(running_loss, loss.item())
 
-            with torch.no_grad():
-                network.eval()
-                current_predict = network(ins)
+                    if phase == 'valid':
+                        # salvam ponderile modelului dupa fiecare epoca
+                        if ep % save_every_ep == 0:
+                            torch.save(network, f"{weights_dir}\\my_model{datetime.now().strftime('%m%d%Y_%H%M')}_e{ep}.pt")
+                        
+                    #     model_path = f"{weights_dir}\\model_epoch{ep}.pth"
+                    #     torch.save({'epoch': ep,
+                    #                 'model_state_dict': network.state_dict(),
+                    #                 'optimizer_state_dict': opt.state_dict(),
+                    #                 'loss': total_loss,
+                    #                 }, model_path) 
+                        
+                     
+                    pbar.update(ins.shape[0])
 
-                # deoarece reteaua nu include un strat de softmax, predictia finala (cifra) trebuie calculata manual
-                current_predict = nn.Softmax(dim=1)(current_predict)
-                current_predict = current_predict.argmax(dim=1)
-
-                if 'cuda' in device.type:
-                    current_predict = current_predict.cpu().numpy()
-                    current_target = tgs.cpu().numpy()
-                else:
-                    current_predict = current_predict.numpy()
-                    current_target = tgs.numpy()
-
-                # print(current_predict.shape)
-                predictions = np.concatenate(
-                    (predictions, current_predict), axis=0)
-                targets = np.concatenate((targets, current_target))
-
-        total_loss.append(loss_epoch/train_bs)
-        # print(predictions.shape)
-        # print(len(targets))
-        # Calculam acuratetea
-        acc = np.sum(predictions == targets)/len(predictions)
-        total_acc.append(acc)
-        print(f'Epoch {ep}: error {loss_epoch/train_bs} accuracy {acc*100}')
-
-        # salvam ponderile modelului dupa fiecare epoca
-        if ep % save_every_epochs == 0:
-           torch.save(network, f"{weights}\\my_model{datetime.now().strftime('%m%d%Y_%H%M')}_epoch{ep}.pt")
-    
-    return {'loss': total_loss, 'acc': total_acc}
+ 
+                # Calculam loss-ul pt toate batch-urile dintr-o epoca
+                total_loss[phase].append(running_loss/len(loaders[phase].dataset))
+                
+                # Calculam acuratetea pt toate batch-urile dintr-o epoca
+                acc = metric.compute()
+                total_acc[phase].append(acc)
             
+                postfix = f'error {total_loss[phase][-1]:.4f} accuracy {acc*100:.2f}%'
+                pbar.set_postfix_str(postfix)
+                        
+                # Resetam pt a acumula valorile dintr-o noua epoca
+                metric.reset()
+                         
+    return {'loss': total_loss, 'acc': total_acc}
+
 def main():
     
 
@@ -103,7 +179,8 @@ def main():
   dir="Weights"
   path=os.path.join(path, dir)
   os.mkdir(path)
-
+  
+  model = torchvision.models.vgg16(pretrained=True)
 
   print(f"pyTorch version {torch.__version__}")
   print(f"torchvision version {torchvision.__version__}")
@@ -121,19 +198,20 @@ def main():
   torch.backends.cudnn.enabled = False
   torch.manual_seed(random_seed)
 
-  transforms = T.Compose([ 
-          T.Resize((64,64)),
-          T.ToTensor(), # converts a PIL.Image or numpy array into torch.Tensor
+  transforms =  T.Compose([
+        T.Resize((config['net']['img'])),
+        T.RandomHorizontalFlip(),
+        T.ToTensor(),
        
-          # T.Normalize((0.1307,), (0.3081,)), # Normalize the dataset with mean and std specified
                ])
 
   train_ds = dset.ImageFolder(config['dataset']['ds_path']+'/train',transform=transforms)
-
+  valid_ds = dset.ImageFolder(config['dataset']['ds_path']+'/valid',transform=transforms)
 
 
   train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=config["train"]["bs"])
-
+  valid_loader = torch.utils.data.DataLoader(valid_ds, shuffle=True, batch_size=config["train"]["bs"])
+   
   print("Nr de imagini in setul de antrenare", len(train_ds))
 
   print("Dim primei imagini din Dataset", train_ds[0][0])
@@ -145,20 +223,26 @@ def main():
 
   print (n_classes)
 
-  network = CustomNet(3, config['net']['n1'], config['net']['n2'], config['net']['n3'], n_classes)
-  print(network)
+  #network = CustomNet(3, config['net']['n1'], config['net']['n2'], config['net']['n3'], n_classes)
+ # print(network)
 
+  set_parameter_requires_grad(model, freeze=True)
+  num_ftrs = model.classifier[6].in_features
+  model.classifier[6] = nn.Linear(num_ftrs, n_classes) 
+  print(model)
   # Specificarea functiei loss
   criterion = nn.CrossEntropyLoss()
 
   # definirea optimizatorului
   if config['train']['opt'] == 'Adam':
-    opt = torch.optim.Adam(network.parameters(), lr=config['train']['lr'])
+    opt = torch.optim.Adam(model.parameters(), lr=config['train']['lr'])
   elif config['train']['opt'] == 'SGD':
-    opt = torch.optim.SGD(network.parameters(), lr=config['train']['lr'])
+    opt = torch.optim.SGD(model.parameters(), lr=config['train']['lr'])
     
   
-  print(train(network,train_loader,criterion,opt,n_epochs=config['train']['n_epochs'],weights=path,train_bs=config["train"]["bs"])  )
+  history = train(model, train_loader, valid_loader, criterion, opt, epochs=config['train']['n_epochs'], weights_dir=path)
+  plot_acc_loss(history,path)
+  
   
  
 
