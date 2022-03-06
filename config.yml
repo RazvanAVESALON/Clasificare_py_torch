@@ -1,7 +1,7 @@
 dataset:
   ds_path: "D:\\ai intro\\dataset"
 net:
-  img: [64,64]
+  img: [128,128]
   n1: 16
   n2: 32
   n3: 64
@@ -11,4 +11,4 @@ train:
   n_epochs: 100
   opt: Adam
 test:
-  exp_path: "D:\\ai intro\\Pytorch\\Clasificare_py_torch\\Experiment_dataset_mare02242022_1249\\Weights\\my_model02242022_1346_epoch95.pt"
+  exp_path: "D:\\ai intro\\Pytorch\\Clasificare_py_torch\\Experiment_dataset_mare03022022_1355\\Weights\\my_model03022022_1522_e90.pt"
