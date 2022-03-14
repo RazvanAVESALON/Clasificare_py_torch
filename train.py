@@ -19,7 +19,7 @@ import torch.nn as nn
 import torch.optim as optim       
 from datetime import datetime
 import os 
-
+import random
 
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
@@ -180,7 +180,6 @@ def main():
   path=os.path.join(path, dir)
   os.mkdir(path)
   
-  model = torchvision.models.vgg16(pretrained=True)
 
   print(f"pyTorch version {torch.__version__}")
   print(f"torchvision version {torchvision.__version__}")
@@ -198,15 +197,21 @@ def main():
   torch.backends.cudnn.enabled = False
   torch.manual_seed(random_seed)
 
+  transforms_valid=T.Compose([
+        T.Resize((config['net']['img'])),
+        T.ToTensor(),
+     ]) 
   transforms =  T.Compose([
         T.Resize((config['net']['img'])),
+        T.RandomRotation(degrees=random.randint(0,360)),
+        T.RandomInvert(),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
        
                ])
 
   train_ds = dset.ImageFolder(config['dataset']['ds_path']+'/train',transform=transforms)
-  valid_ds = dset.ImageFolder(config['dataset']['ds_path']+'/valid',transform=transforms)
+  valid_ds = dset.ImageFolder(config['dataset']['ds_path']+'/valid',transform=transforms_valid)
 
 
   train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=config["train"]["bs"])
@@ -225,7 +230,7 @@ def main():
 
   #network = CustomNet(3, config['net']['n1'], config['net']['n2'], config['net']['n3'], n_classes)
  # print(network)
-
+  model = torchvision.models.vgg16(pretrained=True)
   set_parameter_requires_grad(model, freeze=True)
   num_ftrs = model.classifier[6].in_features
   model.classifier[6] = nn.Linear(num_ftrs, n_classes) 
