@@ -64,7 +64,7 @@ def main():
       config = yaml.safe_load(f)
 
   directory =f"Test{datetime.now().strftime('%m%d%Y_%H%M')}"
-  parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment_dataset_mare03102022_1647'
+  parent_dir =r'D:\ai intro\Pytorch\Clasificare_py_torch\Experiment_dataset_mare03172022_1203' #Path(config[])
   path = os.path.join(parent_dir, directory)
   os.mkdir(path)
 
@@ -76,7 +76,7 @@ def main():
   # incarcam ponderile modelul antrenat
 
   transforms = T.Compose([ 
-          T.Resize((64,64)),
+          T.Resize((config['net']['img'])),
           T.ToTensor(), # converts a PIL.Image or numpy array into torch.Tensor
        
           # T.Normalize((0.1307,), (0.3081,)), # Normalize the dataset with mean and std specified
@@ -128,7 +128,7 @@ def main():
      fp.write("PPV:")
      fp.write(preci.astype('str'))
      fp.write("\n")
-     fp.write("FPR:")
+     fp.write("Recall:")
      fp.write(reca.astype('str'))
      fp.write("\n")
      fp.write("F1:")
