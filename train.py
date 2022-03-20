@@ -231,7 +231,7 @@ def main():
   #network = CustomNet(3, config['net']['n1'], config['net']['n2'], config['net']['n3'], n_classes)
  # print(network)
   model = torchvision.models.vgg16(pretrained=True)
-  set_parameter_requires_grad(model, freeze=True)
+  set_parameter_requires_grad(model, freeze=False)
   num_ftrs = model.classifier[6].in_features
   model.classifier[6] = nn.Linear(num_ftrs, n_classes) 
   print(model)
