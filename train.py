@@ -215,7 +215,7 @@ def main():
 
 
   train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=config["train"]["bs"])
-  valid_loader = torch.utils.data.DataLoader(valid_ds, shuffle=True, batch_size=config["train"]["bs"])
+  valid_loader = torch.utils.data.DataLoader(valid_ds, shuffle=False, batch_size=config["train"]["bs"])
    
   print("Nr de imagini in setul de antrenare", len(train_ds))
 
